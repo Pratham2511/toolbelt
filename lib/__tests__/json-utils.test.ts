@@ -110,6 +110,44 @@ describe("lossless numbers", () => {
   });
 });
 
+describe("toCSV", () => {
+  it.each(["constructor", "toString", "__proto__"])(
+    "leaves missing %s cells empty while retaining own values",
+    (key) => {
+      const result = toCSV(`[{"driver":"Hamilton","${key}":"Mercedes"},{"driver":"Alonso"}]`);
+      expect(result).toEqual({ ok: true, value: `driver,${key}\nHamilton,Mercedes\nAlonso,` });
+    },
+  );
+
+  it("preserves falsy own values for names inherited from Object.prototype", () => {
+    const result = toCSV('[{"constructor":0,"toString":false,"__proto__":""},{"constructor":null}]');
+    expect(result).toEqual({ ok: true, value: "constructor,toString,__proto__\n0,false,\n,," });
+  });
+
+  it("preserves header order and quotes own values with special names", () => {
+    const result = toCSV('[{"toString":"a,b"},{"__proto__":{"a":1},"constructor":"say \\\"hi\\\""}]');
+    expect(result).toEqual({
+      ok: true,
+      value: 'toString,__proto__,constructor\n"a,b",,\n,"{""a"":1}","say ""hi"""',
+    });
+  });
+
+  it("keeps empty cells for null and primitive rows mixed with objects", () => {
+    const result = toCSV('[{"a":1},null,5,"text",true,false]');
+    expect(result).toEqual({ ok: true, value: "a\n1\n\n\n\n\n" });
+  });
+
+  it("retains own array cells when mixed with object rows", () => {
+    const result = toCSV('[{"0":"first","length":"size"},["second"]]');
+    expect(result).toEqual({ ok: true, value: "0,length\nfirst,size\nsecond,1" });
+  });
+
+  it("keeps primitive-only and empty array output unchanged", () => {
+    expect(toCSV('[null,5,"a,b",false]')).toEqual({ ok: true, value: '\n5\n"a,b"\nfalse' });
+    expect(toCSV("[]")).toEqual({ ok: true, value: "" });
+  });
+});
+
 describe("toXML", () => {
   it("wraps a top-level array in a root element", () => {
     const result = toXML("[1,2]");

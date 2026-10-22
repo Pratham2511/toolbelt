@@ -169,7 +169,9 @@ export function toCSV(raw: string): Result<string> {
   }
   const lines = [headers.map(escapeCsv).join(",")];
   for (const row of parsed as Record<string, unknown>[]) {
-    lines.push(headers.map((h) => escapeCsv(row?.[h as string])).join(","));
+    lines.push(headers.map((h) => escapeCsv(
+      row && typeof row === "object" && Object.hasOwn(row, h) ? row[h] : undefined
+    )).join(","));
   }
   return { ok: true, value: lines.join("\n") };
 }
