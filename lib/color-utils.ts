@@ -162,27 +162,33 @@ function parseHex(raw: string): ParseColorResult {
   };
 }
 
+function parseNumberToken(token: string): number | null {
+  if (!/^[+-]?(?:\d*\.\d+|\d+)(?:e[+-]?\d+)?$/i.test(token)) return null;
+  const num = Number(token);
+  return Number.isFinite(num) ? num : null;
+}
+
 function parseAlphaToken(token: string): number | null {
   const trimmed = token.trim();
   if (trimmed.endsWith("%")) {
-    const num = parseFloat(trimmed.slice(0, -1));
-    if (isNaN(num)) return null;
+    const num = parseNumberToken(trimmed.slice(0, -1));
+    if (num === null) return null;
     return Math.max(0, Math.min(1, num / 100));
   }
-  const num = parseFloat(trimmed);
-  if (isNaN(num)) return null;
+  const num = parseNumberToken(trimmed);
+  if (num === null) return null;
   return Math.max(0, Math.min(1, num));
 }
 
 function parseRgbComponent(token: string): number | null {
   const trimmed = token.trim();
   if (trimmed.endsWith("%")) {
-    const num = parseFloat(trimmed.slice(0, -1));
-    if (isNaN(num)) return null;
+    const num = parseNumberToken(trimmed.slice(0, -1));
+    if (num === null) return null;
     return Math.max(0, Math.min(255, (num / 100) * 255));
   }
-  const num = parseFloat(trimmed);
-  if (isNaN(num)) return null;
+  const num = parseNumberToken(trimmed);
+  if (num === null) return null;
   return Math.max(0, Math.min(255, num));
 }
 
@@ -194,6 +200,7 @@ function parseRgbTokens(content: string): {
 } | null {
   const trimmed = content.trim();
   if (trimmed.includes(",")) {
+    if (trimmed.includes("/")) return null;
     const rawParts = trimmed.split(",");
     const parts = rawParts.map((s) => s.trim());
     if (parts.some((p) => p === "")) return null;
@@ -225,9 +232,6 @@ function parseRgbTokens(content: string): {
   if (tokens.some((p) => p === "")) return null;
   if (tokens.length === 3) {
     return { rStr: tokens[0], gStr: tokens[1], bStr: tokens[2] };
-  }
-  if (tokens.length === 4) {
-    return { rStr: tokens[0], gStr: tokens[1], bStr: tokens[2], aStr: tokens[3] };
   }
   return null;
 }
@@ -268,20 +272,16 @@ function parseRgb(content: string): ParseColorResult {
 
 function parseHue(token: string): number | null {
   const lower = token.trim().toLowerCase();
-  let h: number;
-  if (lower.endsWith("deg")) {
-    h = parseFloat(lower.slice(0, -3));
-  } else if (lower.endsWith("grad")) {
-    h = (parseFloat(lower.slice(0, -4)) * 360) / 400;
-  } else if (lower.endsWith("rad")) {
-    h = (parseFloat(lower.slice(0, -3)) * 180) / Math.PI;
-  } else if (lower.endsWith("turn")) {
-    h = parseFloat(lower.slice(0, -4)) * 360;
-  } else {
-    h = parseFloat(lower);
-  }
+  const unit = lower.match(/(deg|grad|rad|turn)$/)?.[0];
+  const num = parseNumberToken(unit ? lower.slice(0, -unit.length) : lower);
+  if (num === null) return null;
 
-  if (isNaN(h)) return null;
+  let h = num;
+  if (unit === "grad") h = (num * 360) / 400;
+  else if (unit === "rad") h = (num * 180) / Math.PI;
+  else if (unit === "turn") h = num * 360;
+
+  if (!Number.isFinite(h)) return null;
   return ((h % 360) + 360) % 360;
 }
 
@@ -297,15 +297,15 @@ function parseHsl(content: string): ParseColorResult {
   }
 
   const sStr = tokens.gStr.trim();
-  const sNum = parseFloat(sStr.endsWith("%") ? sStr.slice(0, -1) : sStr);
-  if (isNaN(sNum)) {
+  const sNum = parseNumberToken(sStr.endsWith("%") ? sStr.slice(0, -1) : sStr);
+  if (sNum === null) {
     return { ok: false, error: "Invalid saturation value" };
   }
   const s = Math.max(0, Math.min(100, sNum));
 
   const lStr = tokens.bStr.trim();
-  const lNum = parseFloat(lStr.endsWith("%") ? lStr.slice(0, -1) : lStr);
-  if (isNaN(lNum)) {
+  const lNum = parseNumberToken(lStr.endsWith("%") ? lStr.slice(0, -1) : lStr);
+  if (lNum === null) {
     return { ok: false, error: "Invalid lightness value" };
   }
   const l = Math.max(0, Math.min(100, lNum));

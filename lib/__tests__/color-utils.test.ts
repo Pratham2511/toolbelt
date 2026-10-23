@@ -117,6 +117,56 @@ describe("RGB / RGBA and HSL / HSLA syntax varieties", () => {
   });
 });
 
+describe("complete color tokens and alpha separators", () => {
+  it.each([
+    ["rgb(+255 0 -10 / +.5)", { r: 255, g: 0, b: 0, a: 0.5 }],
+    ["rgb(1e2% 0% 0% / 5E1%)", { r: 255, g: 0, b: 0, a: 0.5 }],
+    ["rgba(2.55e2, 0, 0, .5)", { r: 255, g: 0, b: 0, a: 0.5 }],
+    ["rgb(300 -10 0 / 150%)", { r: 255, g: 0, b: 0, a: 1 }],
+    ["rgb(0 0 0 / -1)", { r: 0, g: 0, b: 0, a: 0 }],
+    ["hsl(+180DEG, 1e2%, 5e1%)", { r: 0, g: 255, b: 255, a: 1 }],
+    ["hsl(200grad 100% 50% / 50%)", { r: 0, g: 255, b: 255, a: 0.5 }],
+    ["hsl(3.141592653589793rad 100% 50%)", { r: 0, g: 255, b: 255, a: 1 }],
+    ["hsla(-.5turn, 100%, 50%, .5)", { r: 0, g: 255, b: 255, a: 0.5 }],
+    ["hsl(540 120% 50%)", { r: 0, g: 255, b: 255, a: 1 }],
+    ["hsl(0 100 50 / .5)", { r: 255, g: 0, b: 0, a: 0.5 }],
+  ])("preserves supported numbers in %s", (input, value) => {
+    expect(parseColor(input)).toEqual({ ok: true, value });
+  });
+
+  it.each([
+    "rgba(255, 0, 0 / 0.5)",
+    "rgb(12abc, 0, 0)",
+    "hsl(120foo, 50%, 50%)",
+    "rgb(10px 20px 30px)",
+    "rgb(255 0 0 0.5)",
+    "rgba(255, 0, 0, 0.5junk)",
+    "rgb(10junk% 0% 0%)",
+    "rgb(255 0 0 / 50junk%)",
+    "hsl(120foodeg 50% 50%)",
+    "hsl(120 50junk% 50%)",
+    "hsl(120 50% 50junk%)",
+    "hsl(120 50px 50%)",
+    "hsl(120 50% 50px)",
+    "hsla(120, 50%, 50%, .5junk)",
+    "hsl(120 50% 50% .5)",
+    "hsla(120, 50%, 50% / .5)",
+    "rgb(255 0 0 / .5 .6)",
+    "rgb(255 0 0 / .5 / .6)",
+    "rgb(255 0 0 /)",
+    "rgb(255, 0, 0,)",
+    "rgb(1e 0 0)",
+    "rgb(1. 0 0)",
+    "rgb(0x10 0 0)",
+    "rgb(1e999 0 0)",
+    "hsl(1e999turn 50% 50%)",
+  ])("rejects malformed tokens or separators in %s", (input) => {
+    const result = parseColor(input);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).not.toBe("");
+  });
+});
+
 describe("invalid input handling", () => {
   it.each([
     "",
